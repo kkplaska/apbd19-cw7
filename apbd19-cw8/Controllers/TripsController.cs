@@ -7,7 +7,9 @@ namespace apbd19_cw8.Controllers;
 [ApiController]
 public class TripsController : ControllerBase
 
-// Dependency injections
+// !!! Dependency injections
+// http://localhost:5047/api/trips/
+// POST też ma być DTO 
 {
     private readonly ITripsService _tripsService;
 
