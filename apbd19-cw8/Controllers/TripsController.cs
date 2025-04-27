@@ -1,38 +1,37 @@
-﻿using apbd19_cw8.Services;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using apbd19_cw8.Services;
 
-namespace apbd19_cw8.Controllers;
-
-[Route("api/[controller]")]
-[ApiController]
-public class TripsController : ControllerBase
-
-// !!! Dependency injections
-// http://localhost:5047/api/trips/
-// POST też ma być DTO 
+namespace apbd19_cw8.Controllers
 {
-    private readonly ITripsService _tripsService;
-
-    public TripsController(ITripsService tripsService)
+    [Route("api/[controller]")]
+    [ApiController]
+    public class TripsController : ControllerBase
     {
-        _tripsService = tripsService;
-    }
+        private readonly ITripsService _tripsService;
 
-    [HttpGet]
-    public async Task<IActionResult> GetTrips()
-    {
-        var trips = await _tripsService.GetTrips();
-        return Ok(trips);
-    }
+        public TripsController(ITripsService tripsService)
+        {
+            _tripsService = tripsService;
+        }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetTrip(int id)
-    {
-        // if(await DoesTripExist(id)
-        // {
-        //     return NotFound();
-        // }
-        // var trip = ... GetTrip(id);
-        return Ok();
+        [HttpGet]
+        public async Task<IActionResult> GetTrips()
+        {
+            var trips = await _tripsService.GetAllTrips();
+            return Ok(trips);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetTrip(int id)
+        {
+            // if( await DoesTripExist(id)){
+            //  return NotFound();
+            // }
+            // var trip = ... GetTrip(id);
+            return Ok();
+        }
+
+        
+        
     }
 }

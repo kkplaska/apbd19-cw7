@@ -4,5 +4,5 @@ namespace apbd19_cw8.Services;
 
 public interface ITripsService
 {
-    Task<List<TripDTO>> GetTrips();
+    Task<List<TripDto>> GetAllTrips();
 }

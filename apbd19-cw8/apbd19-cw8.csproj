@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>apbd19_cw8</RootNamespace>
+        <UserSecretsId>c3637ad5-3d7a-4111-bb58-f6035952cf55</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
