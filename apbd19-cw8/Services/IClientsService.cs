@@ -7,5 +7,5 @@ public interface IClientsService
     Task<List<TripDto>> GetClientTrips(int id);
     Task<int> AddClient(ClientDto client);
     Task<bool> RegisterClientForTrip(int clientId, int tripId);
-    Task UnregisterClientFromTrip(int clientId, int tripId);
+    Task<bool> UnregisterClientFromTrip(int clientId, int tripId);
 }

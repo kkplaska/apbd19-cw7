@@ -3,6 +3,9 @@ using Microsoft.Data.SqlClient;
 
 namespace apbd19_cw8.Services;
 
+/// <summary>
+/// Serwis zarządzający klientami
+/// </summary>
 public class ClientsService : IClientsService
 {
     private readonly string? _connectionString;
@@ -11,42 +14,72 @@ public class ClientsService : IClientsService
         _connectionString = configuration.GetConnectionString("DefaultConnection");
     }
     
+    /// <summary>
+    /// GET /api/clients/{id}/trips
+    /// Metoda pozyskująca wszystkie wycieczki powiązane z konkretnym klientem.
+    /// </summary>
     public async Task<List<TripDto>> GetClientTrips(int id)
     {
         var trips = new List<TripDto>();
 
-        var command = @"SELECT ct.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople, ct.RegisteredAt, ct.PaymentDate FROM Client_Trip ct INNER JOIN Trip t ON t.IdTrip = ct.IdTrip WHERE ct.IdClient = @id";
-        
-        using (var conn = new SqlConnection(_connectionString))
-        using (var cmd = new SqlCommand(command, conn))
+        using (var connection = new SqlConnection(_connectionString))
         {
-            cmd.Parameters.AddWithValue("@id", id);
-            
-            await conn.OpenAsync();
-
-            using (var reader = await cmd.ExecuteReaderAsync())
+            await connection.OpenAsync();
+            // Sprawdzenie, czy istnieje klient
+            string query = @"SELECT 1 FROM Client WHERE IdClient = @id";
+            using (SqlCommand command = new SqlCommand(query, connection))
             {
-                while (await reader.ReadAsync())
+                command.Parameters.AddWithValue("@id", id); 
+                var result = await command.ExecuteScalarAsync();
+                if (result == null)
                 {
-                    var idOrdinal = reader.GetOrdinal("IdTrip");
-                    trips.Add(new TripDto
+                    connection.Close();
+                    throw new Exception("Client does not exist");
+                }
+            }
+            query = @"SELECT ct.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople, ct.RegisteredAt, ct.PaymentDate FROM Client_Trip ct INNER JOIN Trip t ON t.IdTrip = ct.IdTrip WHERE ct.IdClient = @id";
+            using (SqlCommand command = new SqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@id", id);
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
                     {
-                        Id = reader.GetInt32(idOrdinal),
-                        Name = reader.GetString(1),
-                        Description = reader.GetString(2),
-                        DateFrom = reader.GetDateTime(3),
-                        DateTo = reader.GetDateTime(4),
-                        MaxPeople = reader.GetInt32(5),
-                    });
+                        var idOrdinal = reader.GetOrdinal("IdTrip");
+                        trips.Add(new TripDto
+                        {
+                            Id = reader.GetInt32(idOrdinal),
+                            Name = reader.GetString(1),
+                            Description = reader.GetString(2),
+                            DateFrom = reader.GetDateTime(3),
+                            DateTo = reader.GetDateTime(4),
+                            MaxPeople = reader.GetInt32(5),
+                        });
+                    }
                 }
             }
         }
         return trips;
     }
 
+    /// <summary>
+    /// POST /api/clients
+    /// Metoda tworząca nowy rekord klienta.
+    /// </summary>
     public async Task<int> AddClient(ClientDto client)
     {
         string query = @"INSERT INTO Client (FirstName, LastName, Email, Telephone, Pesel) VALUES (@FirstName, @LastName, @Email, @Telephone, @Pesel); SELECT SCOPE_IDENTITY()";
+        
+        if (client == null) throw new ArgumentNullException(nameof(client));
+        if (string.IsNullOrEmpty(client.FirstName) || 
+            string.IsNullOrEmpty(client.LastName) || 
+            string.IsNullOrEmpty(client.Email) || 
+            string.IsNullOrEmpty(client.Telephone) || 
+            string.IsNullOrEmpty(client.Pesel))
+            throw new Exception("All data is required.");
+        
+        if (!client.Email.Contains("@")) throw new Exception("Email is invalid.");
+        if (client.Pesel.Length != 11) throw new Exception("Pesel must be 11 characters long.");
         
         using (SqlConnection connection = new SqlConnection(_connectionString))
         using (SqlCommand command = new SqlCommand(query, connection))
@@ -64,6 +97,10 @@ public class ClientsService : IClientsService
         }
     }
 
+    /// <summary>
+    /// PUT /api/clients/{id}/trips/{tripId}
+    /// Metoda rejestruje klienta na konkretną wycieczkę.
+    /// </summary>
     public async Task<bool> RegisterClientForTrip(int clientId, int tripId)
     {
         using (SqlConnection connection = new SqlConnection(_connectionString))
@@ -78,7 +115,7 @@ public class ClientsService : IClientsService
                 if (result == null)
                 {
                     connection.Close();
-                    return false;
+                    throw new Exception("Client does not exist");
                 }
             }
             // Sprawdzenie, czy istnieje wycieczka 
@@ -90,7 +127,7 @@ public class ClientsService : IClientsService
                 if (result == null)
                 {
                     connection.Close();
-                    return false;
+                    throw new Exception("Trip does not exist");
                 }
             }
             // Sprawdzenie, czy nie została osiągnięta maksymalna liczba uczestników
@@ -106,7 +143,7 @@ public class ClientsService : IClientsService
                         {
                             reader.Close();
                             connection.Close();
-                            return false;
+                            throw new Exception("Max number of clients in the trip");
                         }
                     }
                 }
@@ -121,7 +158,7 @@ public class ClientsService : IClientsService
                 if (result != null)
                 {
                     connection.Close();
-                    return false;
+                    throw new Exception("Client already registered to this trip");
                 }
             }
             // Właściwe wstawienie rekordu wycieczki 
@@ -137,9 +174,25 @@ public class ClientsService : IClientsService
             }
         }
     }
-
-    public Task UnregisterClientFromTrip(int clientId, int tripId)
+    
+    /// <summary>
+    /// DELETE /api/clients/{id}/trips/{tripId}
+    /// Metoda usuwa klienta z wycieczki.
+    /// </summary>
+    public async Task<bool> UnregisterClientFromTrip(int clientId, int tripId)
     {
-        throw new NotImplementedException();
+        string query = @"DELETE FROM Client_Trip WHERE IdClient = @clientId AND IdTrip = @tripId";
+        
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        using (SqlCommand command = new SqlCommand(query, connection))
+        {
+            command.Parameters.AddWithValue("@clientId", clientId);
+            command.Parameters.AddWithValue("@tripId", tripId);
+            
+            await connection.OpenAsync();
+
+            int rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+        }
     }
 }

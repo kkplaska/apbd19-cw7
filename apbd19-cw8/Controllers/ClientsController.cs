@@ -15,49 +15,57 @@ public class ClientsController : ControllerBase
     {
         _clientsService = clientsService;
     }
-
-    [HttpGet]
-    public async Task<IActionResult> GetClients()
-    {
-        var clients = new List<ClientDto>(){new ClientDto
-        {
-            Id = 1,
-            FirstName = "John",
-            LastName = "Doe",
-            Email = "john.doe@gmail.com",
-            Telephone = "67386478326",
-            Pesel = "Pesel",
-        }};
-        return Ok(clients);
-    }
     
     [HttpGet("{id}/trips")]
     public async Task<IActionResult> GetClientTrips(int id)
     {
-        var clientTrips = await _clientsService.GetClientTrips(id);
-        if (clientTrips.IsNullOrEmpty()) return NotFound();
-        return Ok(clientTrips);
+        try
+        {
+            var clientTrips = await _clientsService.GetClientTrips(id);
+            return Ok(clientTrips);
+        }
+        catch (Exception e)
+        {
+            return NotFound(e.Message);
+        }
     }
     
     [HttpPost]
     public async Task<IActionResult> AddClient(ClientDto client)
     {
-        int id = await _clientsService.AddClient(client);
+        int id;
+        try
+        {
+            id = await _clientsService.AddClient(client);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
         return Created("New client created", id);
     }
 
     [HttpPut("{id}/trips/{tripId}")]
     public async Task<IActionResult> RegisterClientForTrip(int id, int tripId)
     {
-        bool result = await _clientsService.RegisterClientForTrip(id, tripId);
-        if (!result) return BadRequest();
-        return NoContent();
+        try
+        {
+            bool result = await _clientsService.RegisterClientForTrip(id, tripId);
+            if(result) return BadRequest();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpDelete("{id}/trips/{tripId}")]
     public async Task<IActionResult> UnregisterClientFromTrip(int id, int tripId)
     {
-        throw new NotImplementedException();
+        bool result = await _clientsService.UnregisterClientFromTrip(id, tripId);
+        if (!result) return BadRequest();
+        return NoContent();
     }
     
 }
