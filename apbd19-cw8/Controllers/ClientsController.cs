@@ -51,7 +51,7 @@ public class ClientsController : ControllerBase
         try
         {
             bool result = await _clientsService.RegisterClientForTrip(id, tripId);
-            if(result) return BadRequest();
+            if(!result) return BadRequest();
             return NoContent();
         }
         catch (Exception ex)
